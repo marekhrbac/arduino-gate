@@ -1,0 +1,25 @@
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const key = url.searchParams.get("key");
+    const SECRET = env.SECRET_KEY;
+
+    if (key !== SECRET) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const action = url.searchParams.get("action");
+
+    if (action === "open") {
+      await env.GATE.put("status", "open");
+      return new Response("OK");
+    }
+
+    if (action === "done") {
+      await env.GATE.put("status", "idle");
+      return new Response("OK");
+    }
+
+    return new Response(await env.GATE.get("status") || "idle");
+  }
+};
