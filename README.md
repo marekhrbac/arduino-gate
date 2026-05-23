@@ -1,6 +1,6 @@
 # arduino-gate
 
-**Open gate with Siri using D1 Mini (ESP8266) + Relay + Cloudflare Workers**
+**Open gate with Siri using D1 Mini (ESP8266) + 5V Relay + Cloudflare Workers**
 
 ---
 
@@ -19,7 +19,7 @@ Detects "open" → triggers relay for 500ms
         ↓
 Relay closes IMP + GND terminals on gate controller
         ↓
-Gate opens 🎉
+Gate opens 
         ↓
 D1 Mini calls action=done → Worker resets status to "idle"
 ```
