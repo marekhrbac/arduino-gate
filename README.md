@@ -64,6 +64,9 @@ D1 Mini calls action=done → Worker resets status to "idle"
 
 > ⚠️ **Important:** Use 3.3V (not 5V) to power the relay VCC – this is required for reliable operation with D1 Mini's 3.3V logic level.
 
+
+<img width="2485" height="2439" alt="Image" src="https://github.com/user-attachments/assets/1f960572-e4aa-4373-90b7-969b7d723ff1" />
+
 ---
 
 ## Software Setup
