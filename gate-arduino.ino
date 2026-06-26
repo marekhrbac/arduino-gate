@@ -3,36 +3,37 @@
 #include <WiFiClientSecure.h>
 
 // ═══════════════════════════════
-// UPRAV TYTO HODNOTY
+// SSID & Worker
 // ═══════════════════════════════
-const char* ssid      = "WIFI_SSID";
-const char* password  = "WIFI_PASSWORD";
-const char* statusUrl = "https://gate-arduino.YOUR_NAME.workers.dev/?key=YOUR_SECRET";
-const char* doneUrl   = "https://gate-arduino.YOUR_NAME.workers.dev/?key=YOUR_SECRET&action=done";
+const char* ssid      = "your_ssid";
+const char* password  = "ssid_password";
+const char* statusUrl = "https://gate-arduino.your_name.workers.dev/?key=your_secret";
+const char* doneUrl   = "https://gate-arduino.your_name.workers.dev/?key=your_secret&action=done";
 // ═══════════════════════════════
 
-const int RELE_PIN = 4; // D2 = GPIO4
+const int RELE_PIN = 4; 
+const long AUTO_CLOSE_DELAY = 70000; 
+bool gateIsOpen = false;
+unsigned long gateOpenedAt = 0;
 
 WiFiClientSecure client;
 
-// LED functions
 void ledBlink() {
-  digitalWrite(LED_BUILTIN, LOW);  // LED on
+  digitalWrite(LED_BUILTIN, LOW);  
   delay(500);
-  digitalWrite(LED_BUILTIN, HIGH); // LED off
+  digitalWrite(LED_BUILTIN, HIGH); 
   delay(500);
 }
 
 void ledOn() {
-  digitalWrite(LED_BUILTIN, LOW);  // LED on
+  digitalWrite(LED_BUILTIN, LOW);  
 }
 
 void ledOff() {
-  digitalWrite(LED_BUILTIN, HIGH); // LED off
+  digitalWrite(LED_BUILTIN, HIGH); 
 }
 
 void setup() {
-  // default relay - not triggered
   pinMode(RELE_PIN, OUTPUT);
   digitalWrite(RELE_PIN, HIGH);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -41,8 +42,7 @@ void setup() {
   Serial.begin(9600);
   delay(1000);
 
-  // WIFI connection
-  Serial.println("Connecting to WIFI...");
+  Serial.println("Connecting to WiFi...");
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
@@ -52,18 +52,30 @@ void setup() {
   }
 
   Serial.println("");
-  Serial.println("WiFi connected!");
-  Serial.print("IP address: ");
+  Serial.println("WiFi pripojeno!");
+  Serial.print("IP adresa: ");
   Serial.println(WiFi.localIP());
   ledOn();
 
-  client.setInsecure(); // no SSL verification
+  client.setInsecure();
+}
+
+void triggerRelay() {
+  digitalWrite(RELE_PIN, LOW);
+  delay(500);
+  digitalWrite(RELE_PIN, HIGH);
 }
 
 void loop() {
+
+   if (gateIsOpen && (millis() - gateOpenedAt > AUTO_CLOSE_DELAY)) {
+    Serial.println(">>> Auto-closing gate after 60s");
+    triggerRelay();
+    gateIsOpen = false;
+  }
+  
   if (WiFi.status() == WL_CONNECTED) {
 
-    // reading worker state
     HTTPClient http;
     http.begin(client, statusUrl);
     int code = http.GET();
@@ -73,21 +85,18 @@ void loop() {
       status.trim();
       Serial.println("Status: " + status);
 
-      if (status == "open") {
-        Serial.println(">>> Öpening gate!");
+    if (status == "open" && !gateIsOpen) {  
+      Serial.println(">>> Otviram branu!");
+      triggerRelay();                        
+      gateIsOpen = true;                    
+      gateOpenedAt = millis(); 
 
-        // trigger relay for 1s
-        digitalWrite(RELE_PIN, LOW);
-        delay(1000);
-        digitalWrite(RELE_PIN, HIGH);
+      HTTPClient http2;
+      http2.begin(client, doneUrl);
+      http2.GET();
+      http2.end();
 
-        // send worker its done
-        HTTPClient http2;
-        http2.begin(client, doneUrl);
-        http2.GET();
-        http2.end();
-
-        Serial.println(">>> Done, reseting state");
+        Serial.println(">>> Done, state reset");
       }
     } else {
       Serial.println("Chyba HTTP: " + String(code));
@@ -95,12 +104,11 @@ void loop() {
     http.end();
 
   } else {
-    // WIFI disconnected - try again
     Serial.println("WiFi disconnected, reconnect...");
     ledBlink();
     WiFi.begin(ssid, password);
     delay(5000);
   }
 
-  delay(2000); //API request every 2s
+  delay(2000); 
 }
