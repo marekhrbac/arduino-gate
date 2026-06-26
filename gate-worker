@@ -9,17 +9,28 @@ export default {
     }
 
     const action = url.searchParams.get("action");
+    const MAX_AGE_MS = 30000; // 30 sekund
 
     if (action === "open") {
-      await env.GATE.put("status", "open");
+      // Ulož aktuální čas (KV TTL 60s je jen bezpečnostní úklid)
+      await env.GATE.put("status", String(Date.now()), { expirationTtl: 60 });
       return new Response("OK");
     }
 
     if (action === "done") {
-      await env.GATE.put("status", "idle");
+      await env.GATE.delete("status");
       return new Response("OK");
     }
 
-    return new Response(await env.GATE.get("status") || "idle");
+    const stored = await env.GATE.get("status");
+    
+    if (stored) {
+      const age = Date.now() - parseInt(stored);
+      if (age >= 0 && age < MAX_AGE_MS) {
+        return new Response("open");
+      }
+    }
+    
+    return new Response("idle");
   }
 };
